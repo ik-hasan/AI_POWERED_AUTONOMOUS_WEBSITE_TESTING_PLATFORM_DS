@@ -1,0 +1,28 @@
+{
+  "name": "ai-website-testing-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Powered Distributed Website Testing Platform",
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "frontend"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev": "docker compose up --build",
+    "dev:local": "node scripts/start-local.mjs",
+    "kill-ports": "node scripts/kill-ports.mjs",
+    "health": "node scripts/health-check.mjs",
+    "verify": "node scripts/verify-platform.mjs",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^10.1.4",
+    "redis-memory-server": "^0.11.0"
+  }
+}

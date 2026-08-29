@@ -1,0 +1,209 @@
+# Unique compose project name so images/networks/volumes
+# do not collide with the existing `aipowereddistrib` / `platform-*` stack.
+name: awtp
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: awtp-mongodb
+    ports:
+      - "27018:27017"   # host 27018 → Compass; avoids conflict with local MongoDB on 27017
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: awtp-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: awtp-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    image: awtp-auth:latest
+    container_name: awtp-auth
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      MONGODB_URI: mongodb://mongodb:27017/testing_platform
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-me}
+      JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: services/ai-service/Dockerfile
+    image: awtp-ai:latest
+    container_name: awtp-ai
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      MONGODB_URI: mongodb://mongodb:27017/testing_platform
+      REDIS_URL: redis://redis:6379
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      EXECUTION_SERVICE_URL: http://execution-service:3003
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  execution-service:
+    build:
+      context: .
+      dockerfile: services/execution-service/Dockerfile
+    image: awtp-execution:latest
+    container_name: awtp-execution
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      MONGODB_URI: mongodb://mongodb:27017/testing_platform
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      SCREENSHOT_DIR: /app/screenshots
+      AI_SERVICE_URL: http://ai-service:3002
+      REPORT_SERVICE_URL: http://report-service:3004
+      NOTIFICATION_SERVICE_URL: http://notification-service:3005
+      PLAYWRIGHT_HEADLESS: ${PLAYWRIGHT_HEADLESS:-true}
+      PLAYWRIGHT_SLOW_MO: ${PLAYWRIGHT_SLOW_MO:-0}
+      MAX_EXPLORE_HOPS: ${MAX_EXPLORE_HOPS:-15}
+      EXPLORE_TIMEOUT_MS: ${EXPLORE_TIMEOUT_MS:-180000}
+    volumes:
+      - screenshots_data:/app/screenshots
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
+      report-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+
+  report-service:
+    build:
+      context: .
+      dockerfile: services/report-service/Dockerfile
+    image: awtp-report:latest
+    container_name: awtp-report
+    ports:
+      - "3004:3004"
+    environment:
+      PORT: 3004
+      MONGODB_URI: mongodb://mongodb:27017/testing_platform
+      REDIS_URL: redis://redis:6379
+      SCREENSHOT_DIR: /app/screenshots
+    volumes:
+      - screenshots_data:/app/screenshots
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    image: awtp-notification:latest
+    container_name: awtp-notification
+    ports:
+      - "3005:3005"
+    environment:
+      PORT: 3005
+      CORS_ORIGIN: "*"
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    image: awtp-gateway:latest
+    container_name: awtp-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me}
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGIN: "*"
+      AUTH_SERVICE_URL: http://auth-service:3001
+      AI_SERVICE_URL: http://ai-service:3002
+      EXECUTION_SERVICE_URL: http://execution-service:3003
+      REPORT_SERVICE_URL: http://report-service:3004
+      NOTIFICATION_SERVICE_URL: http://notification-service:3005
+    depends_on:
+      auth-service:
+        condition: service_started
+      ai-service:
+        condition: service_started
+      execution-service:
+        condition: service_started
+      report-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: http://localhost:3000/api
+        VITE_WS_URL: http://localhost:3005
+    image: awtp-frontend:latest
+    container_name: awtp-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
+
+volumes:
+  mongodb_data:
+  redis_data:
+  rabbitmq_data:
+  screenshots_data:
