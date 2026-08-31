@@ -4,8 +4,6 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import Redis from 'ioredis';
-import swaggerJsdoc from 'swagger-jsdoc';
-import swaggerUi from 'swagger-ui-express';
 import { Logger, validateServiceEnv } from '@platform/shared';
 import { TestCaseModel } from './models/testCase.model';
 import { TestCaseRepository } from './repositories/testCase.repository';
@@ -46,11 +44,6 @@ async function bootstrap() {
     process.env.EXECUTION_SERVICE_URL || 'http://localhost:3003'
   );
 
-  const swaggerSpec = swaggerJsdoc({
-    definition: { openapi: '3.0.0', info: { title: 'AI Service API', version: '1.0.0' } },
-    apis: ['./src/routes/*.ts'],
-  });
-
   const app = express();
   app.use(helmet());
   app.use(cors());
@@ -65,7 +58,6 @@ async function bootstrap() {
     });
   });
 
-  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   app.use('/api/ai', createAiRoutes(testCaseService, exploreService));
   app.use('/api/test-cases', createTestCaseRoutes(testCaseService));
   app.use(errorHandler);

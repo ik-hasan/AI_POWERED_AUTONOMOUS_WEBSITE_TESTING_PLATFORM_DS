@@ -16,15 +16,6 @@ import { asyncHandler, AppError } from '../middleware';
 export const createAiRoutes = (testCaseService: TestCaseService, exploreService: ExploreService): Router => {
   const router = Router();
 
-  /**
-   * @openapi
-   * /api/ai/generate:
-   *   post:
-   *     tags: [AI]
-   *     summary: Generate test case from natural language
-   *     security:
-   *       - bearerAuth: []
-   */
   router.post(
     '/generate',
     asyncHandler(async (req: Request, res: Response) => {
@@ -44,13 +35,6 @@ export const createAiRoutes = (testCaseService: TestCaseService, exploreService:
     })
   );
 
-  /**
-   * @openapi
-   * /api/ai/explore:
-   *   post:
-   *     tags: [AI]
-   *     summary: Walk the live site and record a page-aware test case
-   */
   router.post(
     '/explore',
     asyncHandler(async (req: Request, res: Response) => {
@@ -169,8 +153,6 @@ export const createTestCaseRoutes = (testCaseService: TestCaseService): Router =
   router.delete(
     '/:id',
     asyncHandler(async (req: Request, res: Response) => {
-      const role = req.headers['x-user-role'] as string;
-      if (role === 'viewer') throw new AppError(403, 'Viewers cannot delete test cases');
       await testCaseService.delete(req.params.id);
       res.json({ success: true, message: 'Test case deleted' });
     })
