@@ -1,10 +1,7 @@
-export type UserRole = 'admin' | 'editor' | 'viewer';
-
 export interface User {
   _id: string;
   email: string;
   name: string;
-  role: UserRole;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -244,7 +241,6 @@ export interface ApiResponse<T = unknown> {
 export interface JwtPayload {
   userId: string;
   email: string;
-  role: UserRole;
 }
 
 export interface AnalyticsSummary {

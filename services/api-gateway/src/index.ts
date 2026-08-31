@@ -5,8 +5,6 @@ import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import Redis from 'ioredis';
 import { createProxyMiddleware, Options } from 'http-proxy-middleware';
-import swaggerJsdoc from 'swagger-jsdoc';
-import swaggerUi from 'swagger-ui-express';
 import { Logger } from '@platform/shared';
 import { authMiddleware, errorHandler } from './middleware/auth.middleware';
 
@@ -15,25 +13,6 @@ dotenv.config();
 const logger = new Logger('api-gateway');
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
-
-const swaggerSpec = swaggerJsdoc({
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'AI Website Testing Platform API',
-      version: '1.0.0',
-      description: 'API Gateway for the distributed testing platform',
-    },
-    servers: [{ url: 'http://localhost:3000' }],
-    components: {
-      securitySchemes: {
-        bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-      },
-    },
-    security: [{ bearerAuth: [] }],
-  },
-  apis: ['../auth-service/src/routes/*.ts', '../ai-service/src/routes/*.ts', '../report-service/src/routes/*.ts'],
-});
 
 function createServiceProxy(target: string, apiPrefix: string): Options {
   return {
@@ -44,7 +23,6 @@ function createServiceProxy(target: string, apiPrefix: string): Options {
       proxyReq: (proxyReq, req) => {
         proxyReq.setHeader('x-user-id', (req.headers['x-user-id'] as string) || '');
         proxyReq.setHeader('x-user-email', (req.headers['x-user-email'] as string) || '');
-        proxyReq.setHeader('x-user-role', (req.headers['x-user-role'] as string) || '');
 
         const body = (req as express.Request).body;
         if (body && Object.keys(body).length > 0) {
@@ -98,8 +76,6 @@ async function bootstrap() {
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', service: 'api-gateway', timestamp: new Date().toISOString() });
   });
-
-  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
   app.use(authMiddleware(JWT_SECRET));
 
