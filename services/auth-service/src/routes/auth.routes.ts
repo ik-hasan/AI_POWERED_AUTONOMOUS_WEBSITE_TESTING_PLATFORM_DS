@@ -6,26 +6,6 @@ import { validate, asyncHandler, AppError } from '../middleware';
 export const createAuthRoutes = (authService: AuthService): Router => {
   const router = Router();
 
-  /**
-   * @openapi
-   * /auth/register:
-   *   post:
-   *     tags: [Auth]
-   *     summary: Register a new user
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             properties:
-   *               email: { type: string }
-   *               password: { type: string }
-   *               name: { type: string }
-   *     responses:
-   *       201:
-   *         description: User registered
-   */
   router.post(
     '/register',
     validate(registerSchema),
@@ -36,13 +16,6 @@ export const createAuthRoutes = (authService: AuthService): Router => {
     })
   );
 
-  /**
-   * @openapi
-   * /auth/login:
-   *   post:
-   *     tags: [Auth]
-   *     summary: Login user
-   */
   router.post(
     '/login',
     validate(loginSchema),

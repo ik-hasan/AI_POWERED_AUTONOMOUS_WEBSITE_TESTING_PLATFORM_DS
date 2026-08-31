@@ -4,8 +4,6 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import Redis from 'ioredis';
-import swaggerJsdoc from 'swagger-jsdoc';
-import swaggerUi from 'swagger-ui-express';
 import { Logger, validateServiceEnv } from '@platform/shared';
 import { UserModel } from './models/user.model';
 import { UserRepository } from './repositories/user.repository';
@@ -17,14 +15,6 @@ dotenv.config();
 
 const logger = new Logger('auth-service');
 const PORT = parseInt(process.env.PORT || '3001', 10);
-
-const swaggerSpec = swaggerJsdoc({
-  definition: {
-    openapi: '3.0.0',
-    info: { title: 'Auth Service API', version: '1.0.0' },
-  },
-  apis: ['./src/routes/*.ts'],
-});
 
 async function bootstrap() {
   validateServiceEnv({
@@ -58,7 +48,6 @@ async function bootstrap() {
     res.json({ status: 'ok', service: 'auth-service', timestamp: new Date().toISOString() });
   });
 
-  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   app.use('/api/auth', createAuthRoutes(authService));
   app.use(errorHandler);
 
