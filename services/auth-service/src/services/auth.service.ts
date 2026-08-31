@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import Redis from 'ioredis';
-import { JwtPayload, UserRole, Logger } from '@platform/shared';
+import { JwtPayload, Logger } from '@platform/shared';
 import { IUserRepository } from '../repositories/user.repository';
 import { IUserDocument } from '../models/user.model';
 
@@ -11,7 +11,7 @@ export interface AuthTokens {
 }
 
 export interface AuthResult {
-  user: { id: string; email: string; name: string; role: UserRole };
+  user: { id: string; email: string; name: string };
   tokens: AuthTokens;
 }
 
@@ -33,13 +33,11 @@ export class AuthService {
       throw new Error('Email already registered');
     }
 
-    const isFirstUser = (await this.userRepo.count()) === 0;
     const hashedPassword = await bcrypt.hash(password, 12);
     const user = await this.userRepo.create({
       email,
       password: hashedPassword,
       name,
-      role: isFirstUser ? 'admin' : 'editor',
     });
 
     const tokens = await this.generateTokens(user);
@@ -100,7 +98,6 @@ export class AuthService {
       id: user._id.toString(),
       email: user.email,
       name: user.name,
-      role: user.role,
     };
   }
 
@@ -108,7 +105,6 @@ export class AuthService {
     const payload: JwtPayload = {
       userId: user._id.toString(),
       email: user.email,
-      role: user.role,
     };
 
     const accessToken = jwt.sign(payload, this.jwtSecret, {
@@ -130,7 +126,6 @@ export class AuthService {
         id: user._id.toString(),
         email: user.email,
         name: user.name,
-        role: user.role,
       },
       tokens,
     };

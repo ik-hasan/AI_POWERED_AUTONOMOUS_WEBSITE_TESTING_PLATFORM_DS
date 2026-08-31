@@ -5,7 +5,6 @@ export interface IUserRepository {
   findById(id: string): Promise<IUserDocument | null>;
   create(data: Partial<IUserDocument>): Promise<IUserDocument>;
   updateRefreshToken(id: string, refreshToken: string | null): Promise<void>;
-  count(): Promise<number>;
 }
 
 export class UserRepository implements IUserRepository {
@@ -25,9 +24,5 @@ export class UserRepository implements IUserRepository {
 
   async updateRefreshToken(id: string, refreshToken: string | null): Promise<void> {
     await this.model.findByIdAndUpdate(id, { refreshToken });
-  }
-
-  async count(): Promise<number> {
-    return this.model.countDocuments();
   }
 }
